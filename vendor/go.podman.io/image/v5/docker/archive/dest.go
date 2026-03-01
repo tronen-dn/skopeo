@@ -14,6 +14,7 @@ type archiveImageDestination struct {
 	ref                  archiveReference
 	writer               *Writer // Should be closed if closeWriter
 	closeWriter          bool
+	sysCtx               *types.SystemContext
 }
 
 func newImageDestination(sys *types.SystemContext, ref archiveReference) (private.ImageDestination, error) {
@@ -38,6 +39,7 @@ func newImageDestination(sys *types.SystemContext, ref archiveReference) (privat
 		ref:         ref,
 		writer:      writer,
 		closeWriter: closeWriter,
+		sysCtx:      sys,
 	}
 	tarDest := tarfile.NewDestination(sys, writer.archive, ref.Transport().Name(), ref.ref, d.CommitWithOptions)
 	if sys != nil && sys.DockerArchiveAdditionalTags != nil {
@@ -45,6 +47,17 @@ func newImageDestination(sys *types.SystemContext, ref archiveReference) (privat
 	}
 	d.Destination = tarDest
 	return d, nil
+}
+
+// DesiredLayerCompression indicates the kind of compression to apply on layers.
+// This overrides the embedded tarfile.Destination method to default to PreserveOriginal
+// instead of Decompress. docker load already auto-detects compression, so preserving
+// original compression avoids inflating archives unnecessarily.
+func (d *archiveImageDestination) DesiredLayerCompression() types.LayerCompression {
+	if d.sysCtx != nil && d.sysCtx.DockerArchiveLayerCompression != nil {
+		return *d.sysCtx.DockerArchiveLayerCompression
+	}
+	return types.PreserveOriginal
 }
 
 // Reference returns the reference used to set up this destination.  Note that this should directly correspond to user's intent,

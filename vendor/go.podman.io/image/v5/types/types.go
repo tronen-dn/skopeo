@@ -618,6 +618,9 @@ type SystemContext struct {
 	BlobInfoCacheDir string
 	// Additional tags when creating or copying a docker-archive.
 	DockerArchiveAdditionalTags []reference.NamedTagged
+	// DockerArchiveLayerCompression controls layer compression when writing docker-archive files.
+	// If nil or zero value, defaults to PreserveOriginal.
+	DockerArchiveLayerCompression *LayerCompression
 	// If not "", overrides the temporary directory to use for storing big files
 	BigFilesTemporaryDir string
 	// If not nil, may contain TLS _algorithm_ options (e.g. TLS version, cipher suites, “curves”, etc.)
