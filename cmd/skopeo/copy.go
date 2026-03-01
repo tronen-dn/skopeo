@@ -17,6 +17,7 @@ import (
 	"go.podman.io/image/v5/manifest"
 	"go.podman.io/image/v5/transports"
 	"go.podman.io/image/v5/transports/alltransports"
+	"go.podman.io/image/v5/types"
 )
 
 type copyOptions struct {
@@ -26,7 +27,8 @@ type copyOptions struct {
 	destImage           *imageDestOptions
 	retryOpts           *retry.Options
 	copy                *sharedCopyOptions
-	additionalTags      []string                  // For docker-archive: destinations, in addition to the name:tag specified as destination, also add these
+	additionalTags                   []string                  // For docker-archive: destinations, in addition to the name:tag specified as destination, also add these
+	dockerArchiveLayerCompression    string                    // Layer compression for docker-archive destinations
 	signIdentity        string                    // Identity of the signed image, must be a fully specified docker reference
 	digestFile          string                    // Write digest to this file
 	quiet               bool                      // Suppress output information when copying images
@@ -76,6 +78,7 @@ See skopeo(1) section "IMAGE NAMES" for the expected format
 	flags.AddFlagSet(&retryFlags)
 	flags.AddFlagSet(&copyFlags)
 	flags.StringSliceVar(&opts.additionalTags, "additional-tag", []string{}, "additional tags (supports docker-archive)")
+	flags.StringVar(&opts.dockerArchiveLayerCompression, "docker-archive-layer-compression", "preserve", `layer compression for docker-archive destinations: preserve (default), compress, decompress`)
 	flags.BoolVarP(&opts.quiet, "quiet", "q", false, "Suppress output information when copying images")
 	flags.BoolVarP(&opts.all, "all", "a", false, "Copy all images if SOURCE-IMAGE is a list")
 	flags.Var(commonFlag.NewOptionalStringValue(&opts.multiArch), "multi-arch", `How to handle multi-architecture images (system, all, or index-only)`)
@@ -158,6 +161,21 @@ func (opts *copyOptions) run(args []string, stdout io.Writer) (retErr error) {
 			return fmt.Errorf("additional-tag '%s' must be a tagged reference", image)
 		}
 		destinationCtx.DockerArchiveAdditionalTags = append(destinationCtx.DockerArchiveAdditionalTags, namedTagged)
+	}
+
+	if opts.dockerArchiveLayerCompression != "" {
+		var c types.LayerCompression
+		switch opts.dockerArchiveLayerCompression {
+		case "preserve":
+			c = types.PreserveOriginal
+		case "compress":
+			c = types.Compress
+		case "decompress":
+			c = types.Decompress
+		default:
+			return fmt.Errorf("invalid --docker-archive-layer-compression value %q: must be preserve, compress, or decompress", opts.dockerArchiveLayerCompression)
+		}
+		destinationCtx.DockerArchiveLayerCompression = &c
 	}
 
 	ctx, cancel := opts.global.commandTimeoutContext()

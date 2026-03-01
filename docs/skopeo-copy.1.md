@@ -57,6 +57,17 @@ Directory to use to share blobs across OCI repositories.
 
 After copying the image, write the digest of the resulting image to the file.
 
+**--docker-archive-layer-compression** _type_
+
+Control layer compression when writing docker-archive files.
+Accepted values: **preserve** (default), **compress**, **decompress**.
+**preserve** keeps the original compression, **decompress** restores the old behaviour
+(larger files, maximum compatibility), and **compress** forces gzip compression if the
+source was uncompressed.
+Note that **preserve** may keep non-gzip compression (e.g. zstd) if the source uses it.
+Older versions of `docker load` only support gzip-compressed layers; use **decompress**
+if you need to load the archive on such versions.
+
 **--preserve-digests**
 
 Preserve the digests during copying. Fail if the digest cannot be preserved.
